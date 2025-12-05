@@ -68,7 +68,7 @@ def train(cfg: DictConfig):
     # set seed
     L.seed_everything(cfg.experiment.seed)
 
-    experiment_name = f"{cfg.model.name}_{cfg.experiment.dataset_name}_{cfg.data.task_type}_{cfg.optimizer.name}_{cfg.experiment.seed}_{cfg.experiment.id}"
+    experiment_name = f"{cfg.model.model_name}_{cfg.experiment.dataset_name}_{cfg.data.task_type}_{cfg.optimizer.name}_{cfg.experiment.seed}_{cfg.experiment.id}"
     print(f"Starting Experiment: {experiment_name}\n")
     logger = setup_logger(cfg, experiment_name)
 
@@ -104,7 +104,7 @@ def train(cfg: DictConfig):
     
     # Initialize model
     model = LightningModule(
-        model_name=cfg.model.name,
+        model_name=cfg.model.model_name,
         model_hparams=model_hparams,
         optimizer_name=cfg.optimizer.name,
         optimizer_hparams=optimizer_hparams,
@@ -159,7 +159,7 @@ def train(cfg: DictConfig):
     print("="*70)
     best_model = LightningModule.load_from_checkpoint(
         trainer.checkpoint_callback.best_model_path,
-        model_name=cfg.model.name,
+        model_name=cfg.model.model_name,
         model_hparams=model_hparams,
         optimizer_name=cfg.optimizer.name,
         optimizer_hparams=optimizer_hparams,
@@ -235,7 +235,7 @@ def train(cfg: DictConfig):
     print("EXPERIMENT SUMMARY")
     print(f"{'='*70}")
     print(f"Experiment:        {experiment_name}")
-    print(f"Model:             {cfg.model.name}")
+    print(f"Model:             {cfg.model.model_name}")
     print(f"Optimizer:         {cfg.optimizer.name}")
     print(f"Test Accuracy:     {test_result.get('test_acc', 0.0):.4f}")
     print(f"Test Precision:    {test_result.get('test_precision', 0.0):.4f}")

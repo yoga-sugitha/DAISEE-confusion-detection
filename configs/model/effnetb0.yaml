@@ -1,6 +1,6 @@
 # EfficientNetB0
 model:
-  name: "effnetb0"
+  model_name: "effnetb0"
   hparams:                 
     pretrained: true
     dropout: 0.2
