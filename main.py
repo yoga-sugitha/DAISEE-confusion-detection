@@ -132,7 +132,7 @@ def train(cfg: DictConfig):
         EarlyStopping(
             monitor="val_loss",
             mode="min",
-            patience=cfg.training.training.patience,
+            patience=cfg.training.callbacks.patience,
             verbose=True
         ),
     ]
