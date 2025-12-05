@@ -2,5 +2,4 @@
 model:
   name: "effnetb0"
   hparams:                 
-    pretrained: true
     dropout: 0.2
