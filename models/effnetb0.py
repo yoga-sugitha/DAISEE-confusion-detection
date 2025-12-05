@@ -6,6 +6,7 @@ import torchvision.models as models
 
 class EfficientNetB0(nn.Module):
     def __init__(self, num_classes=2, c_t=512, act_fn=nn.SiLU, dropout=0.2):
+        super().__init__()
         self.backbone = models.efficientnet_b0(weights='DEFAULT')
         self.backbone.classifier = nn.Identity()
         self.fc = nn.Sequential(
