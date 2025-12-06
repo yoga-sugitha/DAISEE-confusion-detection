@@ -10,11 +10,30 @@ from lightning.pytorch.loggers import WandbLogger
 from typing import List, Optional, Tuple
 import wandb
 
-def _get_efficientnet_target_layer(model: nn.Module) -> nn.Module:
-    """Hard-coded for torchvision EfficientNet — no guessing."""
-    if not hasattr(model, 'features') or not isinstance(model.features, nn.Sequential):
-        raise ValueError("Expected torchvision EfficientNet model")
-    return model.features[-1]
+def get_target_layer(model: nn.Module) -> nn.Module:
+    """Try common patterns, then find last Conv2D."""
+    
+    # 1. Your EfficientNetB0 wrapper
+    if hasattr(model, 'backbone') and hasattr(model.backbone, 'features'):
+        return model.backbone.features[-1]
+    
+    # 2. Standard torchvision models
+    if hasattr(model, 'features'):  # EfficientNet, DenseNet
+        return model.features[-1]
+    if hasattr(model, 'layer4'):  # ResNet
+        return model.layer4[-1]
+    
+    # 3. Generic fallback: find last Conv2D
+    last_conv = None
+    for module in model.modules():
+        if isinstance(module, nn.Conv2d):
+            last_conv = module
+    
+    if last_conv:
+        return last_conv
+    
+    raise ValueError("Could not find target layer. Please specify manually.")
+# ===========================================
 
 class GradCAMHelper:
     """GradCAM helper with automatic layer detection"""
@@ -22,7 +41,7 @@ class GradCAMHelper:
         self.model = model
         
         if target_layer is None:
-            target_layer = _get_efficientnet_target_layer(model)
+            target_layer = get_target_layer(model)
             if target_layer is None:
                 raise ValueError("Could not find target layer")
         
