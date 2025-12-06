@@ -165,6 +165,7 @@ def train(cfg: DictConfig):
         optimizer_name=cfg.optimizer.name,
         optimizer_hparams=optimizer_hparams,
         class_names=class_names,  # Use actual from data
+        map_location='cpu' # very essential
     )
     best_model.eval()
 
