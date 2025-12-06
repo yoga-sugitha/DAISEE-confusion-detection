@@ -124,6 +124,8 @@ class DAiSEEDataModule(L.LightningDataModule):
         if stage == "test" or stage is None:
             if self.test_dataset is None:
                 test_paths, test_labels = self._load_split(self.test_dir)
+                self._test_paths = test_paths
+                self._test_labels = test_labels
                 self.test_dataset = ImagePathDataset(
                     test_paths, 
                     test_labels, 
@@ -170,6 +172,37 @@ class DAiSEEDataModule(L.LightningDataModule):
             labels = self._convert_to_binary(labels)
         
         return paths, labels
+    
+    def get_test_sample(self, idx: int):
+        """
+        Return (image: Tensor, label: int) for test set index `idx`.
+        
+        The image is returned **as transformed by test_transform** (normalized, resized).
+        This matches exactly what your test_dataloader returns.
+        
+        Args:
+            idx: Index in the test split (0 to len(test_dataset)-1)
+            
+        Returns:
+            (image: torch.Tensor in [C, H, W], label: int)
+        """
+        if not hasattr(self, '_test_paths') or not hasattr(self, '_test_labels'):
+            # Ensure test split exists
+            self.setup(stage='test')
+        
+        if idx < 0 or idx >= len(self._test_paths):
+            raise IndexError(f"Test set index {idx} out of range (0–{len(self._test_paths)-1})")
+        
+        path = self._test_paths[idx]
+        label = self._test_labels[idx]
+        
+        # Load and transform using the same logic as ImagePathDataset
+        from PIL import Image
+        image = Image.open(path).convert('RGB')
+        image = self.test_transform(image)  # Apply test-time transform (normalize, etc.)
+        
+        return image, label
+
     
     def _convert_to_binary(self, labels):
         """

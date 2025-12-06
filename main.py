@@ -73,6 +73,7 @@ def train(cfg: DictConfig):
     logger = setup_logger(cfg, experiment_name)
 
     # setup datamodule
+    # Note: There is no val split, because the data has been split in 3 hold-out
     data_module = DAiSEEDataModule(
         data_dir=cfg.data.data_dir,
         batch_size=cfg.data.batch_size,
@@ -166,13 +167,38 @@ def train(cfg: DictConfig):
         class_names=class_names,  # Use actual from data
     )
     best_model.eval()
+
+    # ============================================================
+    # CRITICAL: Destroy distributed process group from training
+    # ============================================================
+    if torch.distributed.is_initialized():
+        print("\n✓ Destroying distributed process group from training...")
+        torch.distributed.destroy_process_group()
+        print("✓ Process group destroyed")
+    
+    # ============================================================
+    # TESTING TRAINER: Use SINGLE GPU to avoid DDP issues
+    # ============================================================
+    
+    print(f"\n{'='*70}")
+    print("Creating single-GPU trainer for testing...")
+    print(f"{'='*70}\n")
+    
+    test_trainer = L.Trainer(
+        accelerator=cfg.training.accelerator,
+        devices=1,  # ← SINGLE GPU for testing
+        logger=logger,
+    )
     
     # Compute model complexity
     print(f"\n{'='*70}")
     print("Evaluating Model Complexity...")
     print(f"{'='*70}\n")
+    
+    # Move model to GPU for complexity computation
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     complexity_metrics = compute_model_complexity(
-        best_model.model,
+        best_model.model.to(device),
         input_size=(3, cfg.data.img_size, cfg.data.img_size)
     )
     
@@ -185,11 +211,11 @@ def train(cfg: DictConfig):
         num_batches=50
     )
     
-    # Test evaluation
+    # Test evaluation with single GPU
     print(f"\n{'='*70}")
-    print("Running Test Evaluation...")
+    print("Running Test Evaluation (Single GPU)...")
     print(f"{'='*70}\n")
-    test_results = trainer.test(best_model, ckpt_path=None, datamodule=data_module)
+    test_results = test_trainer.test(best_model, ckpt_path=None, datamodule=data_module)
     test_result = test_results[0] if test_results else {}
     
     # Generate confusion matrix
@@ -198,21 +224,21 @@ def train(cfg: DictConfig):
         plot_confusion_matrix(
             best_model.all_test_preds,
             best_model.all_test_targets,
-            class_names,  # Use actual from data
+            class_names,
             logger=logger if isinstance(logger, WandbLogger) else None,
             save_path=cm_path
         )
     
     # Generate GradCAM visualizations
+    # Now the indices will be correctly aligned!
     if cfg.xai.enable_gradcam and isinstance(logger, WandbLogger):
         generate_gradcam_visualizations(
             model=best_model,
             data_module=data_module,
             logger=logger,
-            class_names=class_names,  # Use actual from data
+            class_names=class_names,
             num_correct=cfg.xai.num_correct_samples,
             num_incorrect=cfg.xai.num_incorrect_samples,
-            inspect_architecture=cfg.xai.inspect_architecture
         )
     
     # Compile and log all metrics
