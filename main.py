@@ -185,7 +185,7 @@ def train(cfg: DictConfig):
     print(f"{'='*70}\n")
     
     test_trainer = L.Trainer(
-        accelerator=cfg.training.accelerator,
+        accelerator=cfg.training.training.accelerator,
         devices=1,  # ← SINGLE GPU for testing
         logger=logger,
     )
